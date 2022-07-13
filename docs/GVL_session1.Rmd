@@ -1,0 +1,102 @@
+---
+title: "GVL_session1"
+author: "Myfanwy Johnston"
+date: "8/19/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(artemis)
+options(digits = 3)
+
+d = eDNA_data # built-in dataset - fine for simple examples.
+
+# Cq = ln[eDNA]*std_beta + std_alpha
+# ln[eDNA] = (Cq - std_alpha)/std_beta
+
+```
+
+# Intercept-only model
+
+Essentially a model of the average value of ln[eDNA]. ln(eDNA)_sigma = the standard deviation.  Normal distribution (-10.2, 3.67).
+
+```{r}
+m0 = eDNA_lm(Cq ~ 1, # conventional lm/lme4 notation for an intercept-only model.
+             data = d,
+             std_curve_alpha = eDNA_data$StdCrvAlpha_lnForm[1],
+             std_curve_beta = eDNA_data$StdCrvBeta_lnForm[1],
+             seed = 20)
+
+summary(m0)
+```
+
+The estimate here represents the baseline ln[eDNA] in this data set, averaged across all predictor values in the data, is -10.20.  We can see what this concentration corresponds to in Cq using the standard curve formula and the convenience function:
+
+```{r}
+# Cq = (ln[eDNA]*std_beta) + std_alpha
+
+(-10.2*d$StdCrvBeta_lnForm[1]) + d$StdCrvAlpha_lnForm[1]
+
+```
+
+
+# Single predictor models & interpretation
+
+Once you add a predictor, the intercept is the ln[eDNA] when all other predictors are set to 0.  In practice this value may not be meaningful (you can't have a 0 volume sample, for example).
+
+The other estimates (coefficients) are the offset from the intercept.  
+
+```{r m1}
+
+d$lnconc = (d$Cq - d$StdCrvAlpha_lnForm)/d$StdCrvBeta_lnForm
+mean(d$lnconc)
+sd(d$lnconc)
+
+plot(lnconc ~ Distance_m, d)
+
+m1 = eDNA_lm(Cq ~ Distance_m,
+             data = d,
+             std_curve_alpha = eDNA_data$StdCrvAlpha_lnForm,
+             std_curve_beta = eDNA_data$StdCrvBeta_lnForm,
+             seed = 20)
+
+summary(m1)
+
+chk = loo(m1)
+
+plot(chk)
+
+
+preds = predict(m1) # list; one row for each data point, 4000 posterior samples
+
+# plot those predictions against obs
+
+```
+
+Checks: are the estimates sane?  Plot observed vs. predicted; look for systematic weirdness.  Make a new model, compare it with the first one (loo or WAIC).
+
+Residuals roughly correspond to posterior predictive checks.  Frequentist: you get point predictions, and residuals = observed - predicted. QQ plots wouldn't be right - 
+
+Posterior checks for artemis models: you're looking for values that are not being predicted well, and whether those are systematic. LOO and WAIC do much the same thing.  Can plot observed vs. predicted.
+
+```{r}
+
+d2 = readRDS("~/NonDropboxRepos/wrangle_elaphos/data_clean/.rds")
+table(d2$Experiment)
+
+m2 = eDNA_lm(Cq ~ Distance_m + Volume_mL,
+             data = d,
+             std_curve_alpha = eDNA_data$StdCrvAlpha_lnForm,
+             std_curve_beta = eDNA_data$StdCrvBeta_lnForm,
+             seed = 20)
+
+summary(m2)
+
+```
+
+Interaction is saying we think that the effect of volume changes with distance, or the effect of distance changes with volume.  A better set might be distance and species (because maybe different shedding rates).  Continuous x Continuous is harder to interpret/use than continuous x categorical.
+

@@ -1,0 +1,101 @@
+---
+title: "GVL_session1_template"
+author: "Myfanwy Johnston"
+date: "8/19/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(artemis)
+source("R/utils.R")
+options(digits = 3)
+
+d = eDNA_data # built-in dataset - fine for simple examples.
+```
+
+## Exploratory data analysis
+
+```{r}
+
+head(d)
+tail(d)
+str(d)
+
+table(d$TechRep)
+table(d$Distance_m, d$Volume_mL)
+colSums(is.na(d))
+rowSums(is.na(d))
+
+ggplot(d, aes(x = Distance_m, y = Cq)) +
+  geom_jitter(width = 0.3, size = 1) +
+  geom_smooth(method = "lm")
+
+lm1 = lm(Cq ~ 1, data = d)
+summary(lm1)
+
+```
+
+
+
+## Intercept-only model
+
+Make an intercept-only model of Cq from the built in data set we've copied above.  Call it m0. What do the estimates in `summary(m0)` mean?  
+
+```{r m0}
+
+m0 = eDNA_lm(Cq ~ 1,
+             data = d,
+             std_curve_alpha = d$StdCrvAlpha_lnForm,
+             std_curve_beta = d$StdCrvBeta_lnForm)
+
+
+```
+
+## Including a predictor
+
+Now let's model Cq ~ Distance_m.  What does the intercept estimate mean here? The other fixed effects estimates?  How should we interpret their signs and Credible Intervals?
+
+```{r m1}
+
+m1 = eDNA_lm(Cq ~ Distance_m,
+             data = d,
+             std_curve_alpha = d$StdCrvAlpha_lnForm,
+             std_curve_beta = d$StdCrvBeta_lnForm)
+
+summary(m1)
+
+```
+
+## Including two predictors
+
+What changes when you have multiple predictors?
+
+```{r m2}
+
+m2 = eDNA_lm(Cq ~ scale(Distance_m) + scale(Volume_mL),
+             data = d,
+             std_curve_alpha = d$StdCrvAlpha_lnForm,
+             std_curve_beta = d$StdCrvBeta_lnForm,
+             seed = 20)
+
+summary(m2)
+
+```
+
+
+
+## Including two predictors and multiple standard curves
+
+```{r m4}
+
+
+
+```
+
+
+## Including random effects
+
+
